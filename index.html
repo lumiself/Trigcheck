@@ -10,7 +10,7 @@
 <style>
 :root {
   --paper: #F7F4ED;
-  --ink: #1A1814;
+  --ink: #000000;
   --ink-soft: #4A463F;
   --muted: #827A6E;
   --rule: #D9D2C3;
@@ -124,10 +124,10 @@ details[open] summary::after { content: "−"; }
 .dbody { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
 
 /* ── Result card ── */
-.result-card { background: var(--ink); color: var(--paper); border-radius: var(--radius); padding: 14px; }
+.result-card { background: var(--field-bg); color: var(--ink); border: 2px solid var(--ink); border-radius: var(--radius); padding: 14px; }
 .result-card .rrow { display: flex; justify-content: space-between; align-items: baseline; }
 .result-card .rrow + .rrow { margin-top: 6px; }
-.result-card .k { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: rgba(247,244,237,.5); }
+.result-card .k { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
 .result-card .v { font-size: 15px; font-weight: 500; }
 .result-card .v.big { font-size: 26px; font-weight: 700; }
 
