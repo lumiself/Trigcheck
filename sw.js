@@ -1,4 +1,4 @@
-const CACHE = "triglevel-v2";
+const CACHE = "triglevel-v3";
 const ASSETS = [
   "./",
   "./index.html",
