@@ -433,35 +433,22 @@ function renderSummary() {
 }
 
 // ══ Predictor slots ══
-function renderSlots() {
-  $slots.innerHTML = "";
+function slotOutputHtml(idx) {
+  const slot = slots[idx];
   const c = computedTargetElev();
   const tol = +cfg.tol || 0;
-  $tolHint.textContent = `expected zenith · ±${tol} m`;
-
-  slots.forEach((slot, idx) => {
-    const st = findStation(slot.stationName);
-    const wrap = document.createElement("div");
-    wrap.className = "slot-wrap";
-
-    // build options
-    const opts = ['<option value="">— select station —</option>']
-      .concat(db.map(s => `<option value="${s.name}"${s.name===slot.stationName?" selected":""}>${s.name}</option>`))
-      .join("");
-
-    let outHtml = "";
-    if (c.ok && st) {
-      const sHi = +slot.hi || 0;
-      const exp  = expectedZenith(st, c.tgt, c.targetElev, sHi, !!cfg.useCR);
-      const expA = expectedZenith(st, c.tgt, c.targetElev + tol, sHi, !!cfg.useCR);
-      const expB = expectedZenith(st, c.tgt, c.targetElev - tol, sHi, !!cfg.useCR);
-      const lo = fmtDms(Math.min(expA.zenithDeg, expB.zenithDeg));
-      const hi2= fmtDms(Math.max(expA.zenithDeg, expB.zenithDeg));
-      let note = "";
-      if (exp.V <= 0) note = "Target below instrument — downward sight.";
-      else if (exp.V < 1) note = "Nearly horizontal — angle very sensitive.";
-      if (note) wrap.classList.add("flagged");
-      outHtml = `
+  const st = findStation(slot.stationName);
+  if (c.ok && st) {
+    const sHi = +slot.hi || 0;
+    const exp  = expectedZenith(st, c.tgt, c.targetElev, sHi, !!cfg.useCR);
+    const expA = expectedZenith(st, c.tgt, c.targetElev + tol, sHi, !!cfg.useCR);
+    const expB = expectedZenith(st, c.tgt, c.targetElev - tol, sHi, !!cfg.useCR);
+    const lo  = fmtDms(Math.min(expA.zenithDeg, expB.zenithDeg));
+    const hi2 = fmtDms(Math.max(expA.zenithDeg, expB.zenithDeg));
+    let note = "";
+    if (exp.V <= 0) note = "Target below instrument — downward sight.";
+    else if (exp.V < 1) note = "Nearly horizontal — angle very sensitive.";
+    return { flagged: !!note, html: `
         <div class="slot-out">
           <div>
             <div class="lbl">expected zenith · ${exp.H.toFixed(1)} m away</div>
@@ -469,20 +456,46 @@ function renderSlots() {
           </div>
           <div class="rng mono"><b>${lo}</b><br/>→ <b>${hi2}</b></div>
           ${note ? `<div class="note">${note}</div>` : ""}
-        </div>`;
-    } else if (st && !c.ok) {
-      outHtml = `<div class="slot-out"><div class="lbl">complete the reference setup above to compute</div></div>`;
-    }
+        </div>` };
+  }
+  if (st && !c.ok) {
+    return { flagged: false, html: `<div class="slot-out"><div class="lbl">complete the reference setup above to compute</div></div>` };
+  }
+  return { flagged: false, html: "" };
+}
+
+function patchSlotOutput(idx) {
+  const wrap = [...$slots.querySelectorAll('.slot-wrap')][idx];
+  if (!wrap) return;
+  const { html, flagged } = slotOutputHtml(idx);
+  wrap.classList.toggle('flagged', flagged);
+  const old = wrap.querySelector('.slot-out');
+  if (old) old.remove();
+  if (html) wrap.querySelector('.slot').insertAdjacentHTML('afterend', html);
+}
+
+function renderSlots() {
+  $slots.innerHTML = "";
+  const tol = +cfg.tol || 0;
+  $tolHint.textContent = `expected zenith · ±${tol} m`;
+
+  slots.forEach((slot, idx) => {
+    const wrap = document.createElement("div");
+    wrap.className = "slot-wrap";
+    const { html: outHtml, flagged } = slotOutputHtml(idx);
+    if (flagged) wrap.classList.add("flagged");
 
     wrap.innerHTML = `
       <div class="slot">
         <div class="field f3">
           <label>Station ${idx+1}</label>
-          <select data-slot="${idx}" data-role="station">${opts}</select>
+          <input list="dl-stations" data-slot="${idx}" data-role="station"
+                 placeholder="Type or pick…" autocomplete="off"
+                 value="${slot.stationName ?? ""}" />
         </div>
         <div class="field">
           <label>Inst. ht (m)</label>
-          <input class="mono" type="number" inputmode="decimal" step="0.001" placeholder="1.500"
+          <input class="mono" type="text" inputmode="decimal" placeholder="1.500"
                  data-slot="${idx}" data-role="hi" value="${slot.hi ?? ""}" />
         </div>
         <button class="slot-del" data-slot="${idx}" title="Remove slot">✕</button>
@@ -492,28 +505,33 @@ function renderSlots() {
     $slots.appendChild(wrap);
   });
 
-  // wire controls
-  $slots.querySelectorAll('select[data-role="station"]').forEach(sel => {
-    sel.addEventListener("change", () => {
-      const i = +sel.dataset.slot;
-      slots[i].stationName = sel.value;
-      const st = findStation(sel.value);
-      // auto-fill HI if empty or previously auto
-      const hiInput = $slots.querySelector(`input[data-role="hi"][data-slot="${i}"]`);
-      if (st && (!slots[i].hi || hiInput?.dataset.auto === "1")) {
-        slots[i].hi = st.hi ?? "";
+  $slots.querySelectorAll('input[data-role="station"]').forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = +inp.dataset.slot;
+      const val = inp.value.trim();
+      slots[i].stationName = val;
+      const st = findStation(val);
+      if (st) {
+        const hiInp = $slots.querySelector(`input[data-role="hi"][data-slot="${i}"]`);
+        if (!slots[i].hi || hiInp?.dataset.auto === "1") {
+          slots[i].hi = st.hi ?? "";
+          if (hiInp) { hiInp.value = slots[i].hi; hiInp.dataset.auto = "1"; }
+        }
       }
-      saveSlots(); renderSlots();
+      saveSlots(); patchSlotOutput(i);
     });
   });
+
+  // patch output only — never re-render inputs so keyboard stays open
   $slots.querySelectorAll('input[data-role="hi"]').forEach(inp => {
     inp.addEventListener("input", () => {
       const i = +inp.dataset.slot;
       inp.dataset.auto = "0";
-      slots[i].hi = inp.value === "" ? "" : +inp.value;
-      saveSlots(); renderSlots();
+      slots[i].hi = inp.value;
+      saveSlots(); patchSlotOutput(i);
     });
   });
+
   $slots.querySelectorAll(".slot-del").forEach(btn => {
     btn.addEventListener("click", () => {
       slots.splice(+btn.dataset.slot, 1);
