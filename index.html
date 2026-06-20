@@ -288,7 +288,10 @@ footer { margin-top: 28px; text-align: center; font-size: 10px; color: var(--mut
     </div>
     <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none" />
     <div class="code-hint">
-      CSV columns (header optional): <code>name, X, Y, elev</code> or <code>name, X, Y, elev, hi</code><br/>
+      With a header row, columns are auto-detected by name — any order works:<br/>
+      <code>name, northing, easting, elev</code> &nbsp;or&nbsp; <code>name, easting, northing, elev, hi</code><br/>
+      Recognised headers: <code>name/station/id</code> · <code>easting/east/x</code> · <code>northing/north/y</code> · <code>elev/height/z</code> · <code>hi/inst</code><br/>
+      Without a header: assumes <code>name, X, Y, elev[, hi]</code> order.<br/>
       Importing <strong>merges</strong> — existing names are updated, new ones added.
     </div>
     <div class="slist" id="stationList"></div>
@@ -594,13 +597,27 @@ document.getElementById("csvFile").addEventListener("change", e => {
 
 function parseCSV(text) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  let start = 0;
-  if (lines.length && isNaN(+(lines[0].split(",")[1]?.trim()))) start = 1;
+  // Detect header by checking if column 1 is non-numeric
+  const hasHeader = lines.length && isNaN(+(lines[0].split(",")[1]?.trim()));
+  let iName = 0, iX = 1, iY = 2, iElev = 3, iHi = 4;
+  if (hasHeader) {
+    const h = lines[0].split(",").map(v => v.trim().toLowerCase());
+    const match = (terms) => h.findIndex(v => terms.some(t => v.includes(t)));
+    const ci = { name: match(["name","station","id"]), x: match(["easting","east"," x","_x",",x"]), y: match(["northing","north"," y","_y",",y"]), elev: match(["elev","height","z"]), hi: match(["hi","inst"]) };
+    // fallback: match plain "x" or "y" header cells
+    if (ci.x < 0) ci.x = h.findIndex(v => v === "x");
+    if (ci.y < 0) ci.y = h.findIndex(v => v === "y");
+    if (ci.name >= 0) iName = ci.name;
+    if (ci.x    >= 0) iX    = ci.x;
+    if (ci.y    >= 0) iY    = ci.y;
+    if (ci.elev >= 0) iElev = ci.elev;
+    if (ci.hi   >= 0) iHi   = ci.hi;
+  }
   const out = [];
-  for (let i = start; i < lines.length; i++) {
+  for (let i = hasHeader ? 1 : 0; i < lines.length; i++) {
     const c = lines[i].split(",").map(v => v.trim());
     if (c.length < 4) continue;
-    const [name, X, Y, elev, hi] = c;
+    const name = c[iName], X = c[iX], Y = c[iY], elev = c[iElev], hi = c[iHi];
     if (!name || isNaN(+X) || isNaN(+Y) || isNaN(+elev)) continue;
     out.push({ name, X:+X, Y:+Y, elev:+elev, hi: (hi && !isNaN(+hi)) ? +hi : 1.5 });
   }
