@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1A1814" />
+<title>Trig Level — Precision Check</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="apple-touch-icon" href="./icons/icon-192.png" />
+<style>
+:root {
+  --paper: #F7F4ED;
+  --ink: #1A1814;
+  --ink-soft: #4A463F;
+  --muted: #827A6E;
+  --rule: #D9D2C3;
+  --accent: #E85D29;
+  --ok: #3D6647;
+  --warn-color: #A8311C;
+  --field-bg: #FFFFFF;
+  --field-focus: #FCEFE6;
+  --radius: 6px;
+  --touch: 46px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--paper); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  font-size: 15px; line-height: 1.45; -webkit-text-size-adjust: 100%;
+}
+body {
+  padding:
+    env(safe-area-inset-top,0px) env(safe-area-inset-right,0px)
+    env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+}
+.mono { font-family: "SF Mono","JetBrains Mono","Menlo","Consolas",monospace; font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 600px; margin: 0 auto; padding: 16px 14px 80px; }
+
+/* ── Header ── */
+header {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 12px; margin-bottom: 18px; border-bottom: 2px solid var(--ink);
+}
+header h1 { font-size: 13px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.db-badge { font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+.db-badge.loaded { color: var(--ok); font-weight: 600; }
+
+/* ── Section ── */
+.section { margin-bottom: 18px; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+h2 { font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-soft); }
+.hint { font-size: 11px; color: var(--muted); }
+
+/* ── Card ── */
+.card {
+  background: var(--field-bg); border: 1px solid var(--rule);
+  border-radius: var(--radius); padding: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.card.primary { border: 2px solid var(--ink); }
+
+/* ── Field ── */
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.field label { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.field input, .field select {
+  appearance: none; -webkit-appearance: none;
+  background: var(--paper); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 0 10px;
+  height: var(--touch); font: inherit; color: var(--ink); width: 100%;
+}
+.field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23827A6E' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  padding-right: 28px; cursor: pointer;
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); background: var(--field-focus); }
+.field input::placeholder { color: var(--rule); }
+.field .sub { font-size: 10px; color: var(--muted); text-align: center; margin-top: 2px; letter-spacing: .04em; }
+
+/* ── Rows ── */
+.row { display: flex; gap: 10px; align-items: flex-end; }
+.row .f2 { flex: 2; }
+.row .f3 { flex: 3; }
+
+/* ── DMS ── */
+.dms { display: flex; gap: 6px; }
+.dms .field input { text-align: center; padding: 0 4px; }
+
+/* ── Predictor slot ── */
+.slot {
+  display: flex; gap: 8px; align-items: flex-end;
+  padding: 10px; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper);
+}
+.slot + .slot { margin-top: 8px; }
+.slot .field input, .slot .field select { background: var(--field-bg); height: 42px; }
+.slot .slot-del {
+  flex-shrink: 0; background: none; border: 1px solid var(--rule); border-radius: 4px;
+  width: 42px; height: 42px; font-size: 15px; color: var(--warn-color); cursor: pointer;
+}
+.slot-out {
+  margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--rule);
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+}
+.slot-out .lbl { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.slot-out .ang { font-size: 20px; font-weight: 700; }
+.slot-out .rng { font-size: 11px; color: var(--ink-soft); }
+.slot-out .note { font-size: 11px; color: var(--warn-color); margin-top: 4px; flex-basis: 100%; }
+.slot-wrap { display: flex; flex-direction: column; }
+.slot-wrap.flagged .slot { border-left: 3px solid var(--warn-color); }
+
+/* ── Details ── */
+details { border: 1px solid var(--rule); border-radius: var(--radius); margin-bottom: 12px; }
+details summary {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px; cursor: pointer; list-style: none; user-select: none;
+  font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--ink-soft); background: var(--field-bg); border-radius: var(--radius);
+}
+details[open] summary { border-radius: var(--radius) var(--radius) 0 0; border-bottom: 1px solid var(--rule); }
+details summary::-webkit-details-marker { display: none; }
+details summary::after { content: "+"; font-size: 16px; font-weight: 300; color: var(--muted); }
+details[open] summary::after { content: "−"; }
+.dbody { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+/* ── Result card ── */
+.result-card { background: var(--ink); color: var(--paper); border-radius: var(--radius); padding: 14px; }
+.result-card .rrow { display: flex; justify-content: space-between; align-items: baseline; }
+.result-card .rrow + .rrow { margin-top: 6px; }
+.result-card .k { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: rgba(247,244,237,.5); }
+.result-card .v { font-size: 15px; font-weight: 500; }
+.result-card .v.big { font-size: 26px; font-weight: 700; }
+
+/* ── Empty ── */
+.empty {
+  border: 1px dashed var(--rule); border-radius: var(--radius);
+  padding: 20px; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.6;
+}
+
+/* ── Station list ── */
+.slist { display: flex; flex-direction: column; gap: 6px; }
+.srow { display: flex; align-items: center; gap: 8px; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px; }
+.srow .sname { font-weight: 600; font-size: 13px; flex-shrink: 0; }
+.srow .sinfo { font-size: 11px; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow .sdel { flex-shrink: 0; background: none; border: 1px solid var(--rule); border-radius: 3px; padding: 3px 8px; font: inherit; font-size: 11px; color: var(--warn-color); cursor: pointer; }
+
+/* ── CSV bar ── */
+.csv-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.csv-msg { font-size: 12px; color: var(--ink-soft); }
+.csv-msg.ok { color: var(--ok); font-weight: 600; }
+.csv-msg.err { color: var(--warn-color); }
+
+/* ── Buttons ── */
+.btn {
+  appearance: none; background: var(--ink); color: var(--paper);
+  border: 1px solid var(--ink); padding: 0 14px; height: var(--touch);
+  border-radius: var(--radius); font: inherit; font-weight: 600;
+  font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn.sm { height: 36px; font-size: 11px; padding: 0 12px; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── Checkbox ── */
+.opt { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.opt input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ── Code hint ── */
+.code-hint { font-size: 11px; color: var(--muted); line-height: 1.7; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px; }
+code { font-family: "SF Mono","Menlo","Consolas",monospace; background: var(--rule); padding: 1px 4px; border-radius: 2px; }
+
+footer { margin-top: 28px; text-align: center; font-size: 10px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+
+@media (max-width: 400px) {
+  .row { flex-wrap: wrap; }
+  .row .f3 { flex: 1 0 100%; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Trig Level · Precision Check</h1>
+  <span class="db-badge" id="dbBadge">no stations</span>
+</header>
+
+<!-- ══ TARGET (temporary) ══ -->
+<div class="section">
+  <div class="section-head">
+    <h2>Target point</h2>
+    <span class="hint">session only — not saved</span>
+  </div>
+  <div class="card">
+    <div class="row">
+      <div class="field f2">
+        <label>X — Easting</label>
+        <input class="mono" id="tgtX" type="number" inputmode="decimal" step="0.01" placeholder="764876.00" />
+      </div>
+      <div class="field f2">
+        <label>Y — Northing</label>
+        <input class="mono" id="tgtY" type="number" inputmode="decimal" step="0.01" placeholder="2635041.00" />
+      </div>
+      <div class="field">
+        <label>Base elev (m)</label>
+        <input class="mono" id="baseElev" type="number" inputmode="decimal" step="0.001" placeholder="0.000" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ REFERENCE STATION ══ -->
+<div class="section">
+  <div class="section-head">
+    <h2>Reference station</h2>
+    <span class="hint" id="refHint">pick the station you're set up at</span>
+  </div>
+  <div class="card primary">
+    <div class="row">
+      <div class="field f3">
+        <label>Station</label>
+        <input list="dl-stations" id="stationPicker" placeholder="Type or pick…" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Inst. height (m)</label>
+        <input class="mono" id="hiInput" type="number" inputmode="decimal" step="0.001" placeholder="1.500" />
+      </div>
+    </div>
+    <div>
+      <div style="margin-bottom:6px;">
+        <label style="font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted);">Zenith angle</label>
+      </div>
+      <div class="dms">
+        <div class="field"><input class="mono" id="refD" type="number" inputmode="numeric" placeholder="89" /><div class="sub">D°</div></div>
+        <div class="field"><input class="mono" id="refM" type="number" inputmode="numeric" placeholder="29" /><div class="sub">M'</div></div>
+        <div class="field"><input class="mono" id="refS" type="number" inputmode="decimal" step="0.1" placeholder="00.0" /><div class="sub">S"</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUMMARY RESULT ══ -->
+<div class="section">
+  <div class="section-head"><h2>Computed target</h2></div>
+  <div id="summary"></div>
+</div>
+
+<!-- ══ OTHER STATIONS (predictors) ══ -->
+<div class="section">
+  <div class="section-head">
+    <h2>Other stations</h2>
+    <span class="hint" id="tolHint">expected zenith ·±0.5 m</span>
+  </div>
+  <div id="slots"></div>
+  <div class="btn-row" style="margin-top:10px;">
+    <button class="btn ghost sm" id="addSlotBtn">+ Add station slot</button>
+  </div>
+</div>
+
+<datalist id="dl-stations"></datalist>
+
+<!-- ══ SETTINGS ══ -->
+<details>
+  <summary>Settings</summary>
+  <div class="dbody">
+    <div class="row" style="align-items:flex-end; max-width:260px;">
+      <div class="field">
+        <label>Height tolerance (± m)</label>
+        <input class="mono" id="tol" type="number" inputmode="decimal" step="0.1" value="0.5" style="height:40px;" />
+      </div>
+    </div>
+    <div class="opt">
+      <input type="checkbox" id="useCR" checked />
+      <label for="useCR">Curvature + refraction correction</label>
+    </div>
+  </div>
+</details>
+
+<!-- ══ STATION DATABASE ══ -->
+<details id="stationsPanel">
+  <summary>Station Database &nbsp;<span id="dbCount" style="font-weight:400; color:var(--muted);">(0)</span></summary>
+  <div class="dbody">
+    <div class="csv-bar">
+      <button class="btn sm" id="csvBtn">Import CSV</button>
+      <button class="btn ghost sm" id="clearBtn">Clear all</button>
+      <span class="csv-msg" id="csvMsg">No stations loaded</span>
+    </div>
+    <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none" />
+    <div class="code-hint">
+      CSV columns (header optional): <code>name, X, Y, elev</code> or <code>name, X, Y, elev, hi</code><br/>
+      Importing <strong>merges</strong> — existing names are updated, new ones added.
+    </div>
+    <div class="slist" id="stationList"></div>
+    <div class="btn-row"><button class="btn ghost sm" id="addBtn">+ Add manually</button></div>
+    <div id="addForm" style="display:none; border:1px solid var(--rule); border-radius:4px; padding:12px;">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div class="field"><label>Name</label><input id="af-name" placeholder="Station A" style="height:38px;" /></div>
+        <div class="field"><label>Elev (m)</label><input class="mono" id="af-elev" type="number" step="0.001" placeholder="0.000" style="height:38px;" /></div>
+        <div class="field"><label>X (Easting)</label><input class="mono" id="af-x" type="number" step="0.01" placeholder="0.00" style="height:38px;" /></div>
+        <div class="field"><label>Y (Northing)</label><input class="mono" id="af-y" type="number" step="0.01" placeholder="0.00" style="height:38px;" /></div>
+        <div class="field"><label>Default HI (m)</label><input class="mono" id="af-hi" type="number" step="0.001" placeholder="1.500" style="height:38px;" /></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn sm" id="af-save">Save</button>
+        <button class="btn ghost sm" id="af-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</details>
+
+<footer>Trig Level · works offline · install to home screen</footer>
+</div>
+
+<script>
+// ══ Persisted state ══
+let db   = loadDB();   // station database [{name,X,Y,elev,hi}]
+let ref  = loadRef();  // { stationName, hi, d, m, s }
+let slots = loadSlots(); // [{ stationName, hi }] — predictor slots
+let cfg  = loadCfg();  // { tol, useCR }
+
+function loadDB()    { try { const r = localStorage.getItem("tl.db.v2");    if (r) return JSON.parse(r); } catch {} return []; }
+function loadRef()   { try { const r = localStorage.getItem("tl.ref.v2");   if (r) return JSON.parse(r); } catch {} return { stationName:"", hi:"", d:"", m:"", s:"" }; }
+function loadSlots() { try { const r = localStorage.getItem("tl.slots.v1"); if (r) return JSON.parse(r); } catch {} return [ {stationName:"",hi:""},{stationName:"",hi:""},{stationName:"",hi:""} ]; }
+function loadCfg()   { try { const r = localStorage.getItem("tl.cfg.v2");   if (r) return JSON.parse(r); } catch {} return { tol: 0.5, useCR: true }; }
+
+function saveDB()    { try { localStorage.setItem("tl.db.v2",    JSON.stringify(db));    } catch {} }
+function saveRef()   { try { localStorage.setItem("tl.ref.v2",   JSON.stringify(ref));   } catch {} }
+function saveSlots() { try { localStorage.setItem("tl.slots.v1", JSON.stringify(slots)); } catch {} }
+function saveCfg()   { try { localStorage.setItem("tl.cfg.v2",   JSON.stringify(cfg));   } catch {} }
+
+// ══ Math ══
+function dmsToDeg(d, m, s) { return +d + +m/60 + +s/3600; }
+function degToDms(deg) {
+  const v = Math.abs(deg), d = Math.floor(v);
+  const mf = (v - d)*60, m = Math.floor(mf), s = (mf - m)*60;
+  return { d: deg < 0 ? -d : d, m, s };
+}
+function fmtDms(deg) {
+  if (!isFinite(deg)) return "—";
+  const {d, m, s} = degToDms(deg);
+  return `${d}°${String(m).padStart(2,"0")}'${s.toFixed(1).padStart(4,"0")}"`;
+}
+function dist2D(ax, ay, bx, by) { const dx = bx-ax, dy = by-ay; return Math.sqrt(dx*dx+dy*dy); }
+function crCorr(distM) { const k = distM/1000; return 0.0675*k*k; }
+
+function computeTargetElev(st, tgt, zenithDeg, hi, useCR) {
+  const H = dist2D(st.X, st.Y, tgt.X, tgt.Y);
+  let V = H / Math.tan(zenithDeg * Math.PI / 180);
+  if (useCR) V += crCorr(H);
+  return { targetElev: st.elev + hi + V, H, V };
+}
+function expectedZenith(st, tgt, targetElev, hi, useCR) {
+  const H = dist2D(st.X, st.Y, tgt.X, tgt.Y);
+  let V = targetElev - (st.elev + hi);
+  if (useCR) V -= crCorr(H);
+  return { H, zenithDeg: Math.atan2(H, V) * 180 / Math.PI, V };
+}
+
+// ══ DOM refs ══
+const $picker   = document.getElementById("stationPicker");
+const $hi       = document.getElementById("hiInput");
+const $d = document.getElementById("refD"), $m = document.getElementById("refM"), $s = document.getElementById("refS");
+const $tgtX = document.getElementById("tgtX"), $tgtY = document.getElementById("tgtY"), $baseElev = document.getElementById("baseElev");
+const $summary  = document.getElementById("summary");
+const $slots    = document.getElementById("slots");
+const $refHint  = document.getElementById("refHint");
+const $tolHint  = document.getElementById("tolHint");
+const $dbBadge  = document.getElementById("dbBadge");
+const $dbCount  = document.getElementById("dbCount");
+const $sList    = document.getElementById("stationList");
+const $csvMsg   = document.getElementById("csvMsg");
+const $dl       = document.getElementById("dl-stations");
+const $tol      = document.getElementById("tol");
+const $useCR    = document.getElementById("useCR");
+
+const findStation = name => db.find(s => s.name === (name||"").trim()) ?? null;
+
+// ══ Datalist & badges ══
+function refreshDatalist() {
+  $dl.innerHTML = "";
+  db.forEach(s => { const o = document.createElement("option"); o.value = s.name; $dl.appendChild(o); });
+  const n = db.length;
+  $dbBadge.textContent = n ? `${n} station${n>1?"s":""}` : "no stations";
+  $dbBadge.className = "db-badge" + (n ? " loaded" : "");
+  $dbCount.textContent = `(${n})`;
+}
+
+// ══ Current target / computed elevation ══
+function currentTarget() {
+  return { X: +$tgtX.value, Y: +$tgtY.value };
+}
+function computedTargetElev() {
+  const refSt = findStation(ref.stationName);
+  const tgt = currentTarget();
+  const zDeg = dmsToDeg(ref.d||0, ref.m||0, ref.s||0);
+  const hi = +ref.hi || 0;
+  const ok = refSt && isFinite(tgt.X) && tgt.X !== 0 && isFinite(tgt.Y) && tgt.Y !== 0 &&
+             isFinite(zDeg) && zDeg > 0 && zDeg < 180 && isFinite(hi);
+  if (!ok) return { ok:false, refSt, tgt };
+  const res = computeTargetElev(refSt, tgt, zDeg, hi, !!cfg.useCR);
+  return { ok:true, refSt, tgt, ...res };
+}
+
+// ══ Summary ══
+function renderSummary() {
+  $summary.innerHTML = "";
+  const c = computedTargetElev();
+  $refHint.textContent = c.refSt ? `at ${c.refSt.name}` : "pick the station you're set up at";
+
+  if (!c.ok) {
+    const el = document.createElement("div");
+    el.className = "empty";
+    el.textContent = !db.length
+      ? "Import a CSV to add stations, then enter target coordinates and pick your reference station."
+      : "Enter target X/Y, pick your reference station + height, and the measured zenith angle.";
+    $summary.appendChild(el);
+    return;
+  }
+  const baseElev = +$baseElev.value || 0;
+  const height = c.targetElev - baseElev;
+  const card = document.createElement("div");
+  card.className = "result-card";
+  card.innerHTML = `
+    <div class="rrow"><span class="k">Target elevation</span><span class="v mono">${c.targetElev.toFixed(3)} m</span></div>
+    <div class="rrow"><span class="k">Height above base (${baseElev.toFixed(3)} m)</span><span class="v big mono">${height.toFixed(3)} m</span></div>
+    <div class="rrow"><span class="k">Dist · vert rise</span><span class="v mono">${c.H.toFixed(1)} m · ${c.V.toFixed(3)} m</span></div>
+  `;
+  $summary.appendChild(card);
+}
+
+// ══ Predictor slots ══
+function renderSlots() {
+  $slots.innerHTML = "";
+  const c = computedTargetElev();
+  const tol = +cfg.tol || 0;
+  $tolHint.textContent = `expected zenith · ±${tol} m`;
+
+  slots.forEach((slot, idx) => {
+    const st = findStation(slot.stationName);
+    const wrap = document.createElement("div");
+    wrap.className = "slot-wrap";
+
+    // build options
+    const opts = ['<option value="">— select station —</option>']
+      .concat(db.map(s => `<option value="${s.name}"${s.name===slot.stationName?" selected":""}>${s.name}</option>`))
+      .join("");
+
+    let outHtml = "";
+    if (c.ok && st) {
+      const sHi = +slot.hi || 0;
+      const exp  = expectedZenith(st, c.tgt, c.targetElev, sHi, !!cfg.useCR);
+      const expA = expectedZenith(st, c.tgt, c.targetElev + tol, sHi, !!cfg.useCR);
+      const expB = expectedZenith(st, c.tgt, c.targetElev - tol, sHi, !!cfg.useCR);
+      const lo = fmtDms(Math.min(expA.zenithDeg, expB.zenithDeg));
+      const hi2= fmtDms(Math.max(expA.zenithDeg, expB.zenithDeg));
+      let note = "";
+      if (exp.V <= 0) note = "Target below instrument — downward sight.";
+      else if (exp.V < 1) note = "Nearly horizontal — angle very sensitive.";
+      if (note) wrap.classList.add("flagged");
+      outHtml = `
+        <div class="slot-out">
+          <div>
+            <div class="lbl">expected zenith · ${exp.H.toFixed(1)} m away</div>
+            <div class="ang mono">${fmtDms(exp.zenithDeg)}</div>
+          </div>
+          <div class="rng mono"><b>${lo}</b><br/>→ <b>${hi2}</b></div>
+          ${note ? `<div class="note">${note}</div>` : ""}
+        </div>`;
+    } else if (st && !c.ok) {
+      outHtml = `<div class="slot-out"><div class="lbl">complete the reference setup above to compute</div></div>`;
+    }
+
+    wrap.innerHTML = `
+      <div class="slot">
+        <div class="field f3">
+          <label>Station ${idx+1}</label>
+          <select data-slot="${idx}" data-role="station">${opts}</select>
+        </div>
+        <div class="field">
+          <label>Inst. ht (m)</label>
+          <input class="mono" type="number" inputmode="decimal" step="0.001" placeholder="1.500"
+                 data-slot="${idx}" data-role="hi" value="${slot.hi ?? ""}" />
+        </div>
+        <button class="slot-del" data-slot="${idx}" title="Remove slot">✕</button>
+      </div>
+      ${outHtml}
+    `;
+    $slots.appendChild(wrap);
+  });
+
+  // wire controls
+  $slots.querySelectorAll('select[data-role="station"]').forEach(sel => {
+    sel.addEventListener("change", () => {
+      const i = +sel.dataset.slot;
+      slots[i].stationName = sel.value;
+      const st = findStation(sel.value);
+      // auto-fill HI if empty or previously auto
+      const hiInput = $slots.querySelector(`input[data-role="hi"][data-slot="${i}"]`);
+      if (st && (!slots[i].hi || hiInput?.dataset.auto === "1")) {
+        slots[i].hi = st.hi ?? "";
+      }
+      saveSlots(); renderSlots();
+    });
+  });
+  $slots.querySelectorAll('input[data-role="hi"]').forEach(inp => {
+    inp.addEventListener("input", () => {
+      const i = +inp.dataset.slot;
+      inp.dataset.auto = "0";
+      slots[i].hi = inp.value === "" ? "" : +inp.value;
+      saveSlots(); renderSlots();
+    });
+  });
+  $slots.querySelectorAll(".slot-del").forEach(btn => {
+    btn.addEventListener("click", () => {
+      slots.splice(+btn.dataset.slot, 1);
+      saveSlots(); renderSlots();
+    });
+  });
+}
+
+function renderAll() { renderSummary(); renderSlots(); }
+
+// ══ Station list panel ══
+function renderStationList() {
+  $sList.innerHTML = "";
+  if (!db.length) {
+    $sList.innerHTML = `<div class="empty" style="padding:12px 16px; text-align:left;">No stations yet. Import a CSV or add manually.</div>`;
+    return;
+  }
+  db.forEach((s, i) => {
+    const row = document.createElement("div");
+    row.className = "srow";
+    row.innerHTML = `
+      <span class="sname">${s.name}</span>
+      <span class="sinfo mono">${s.X?.toFixed(2)}, ${s.Y?.toFixed(2)} · ${s.elev?.toFixed(3)} m · hi ${(s.hi??1.5).toFixed(3)} m</span>
+      <button class="sdel" data-i="${i}">✕</button>`;
+    row.querySelector(".sdel").addEventListener("click", () => {
+      db.splice(i, 1); saveDB();
+      refreshDatalist(); renderStationList(); renderAll();
+    });
+    $sList.appendChild(row);
+  });
+}
+
+// ══ Reference wiring ══
+$picker.addEventListener("input", () => {
+  ref.stationName = $picker.value.trim();
+  const st = findStation(ref.stationName);
+  if (st && (!$hi.value || $hi.dataset.auto === "1")) {
+    $hi.value = st.hi ?? ""; $hi.dataset.auto = "1"; ref.hi = +(st.hi ?? 0);
+  }
+  saveRef(); renderAll();
+});
+$hi.addEventListener("input", () => { $hi.dataset.auto = "0"; ref.hi = +$hi.value || 0; saveRef(); renderAll(); });
+[$d,$m,$s].forEach((el,i) => el.addEventListener("input", () => {
+  ref[["d","m","s"][i]] = el.value === "" ? "" : +el.value; saveRef(); renderAll();
+}));
+[$tgtX,$tgtY,$baseElev].forEach(el => el.addEventListener("input", renderAll));
+$tol.addEventListener("input", () => { cfg.tol = +$tol.value || 0; saveCfg(); renderAll(); });
+$useCR.addEventListener("change", () => { cfg.useCR = $useCR.checked; saveCfg(); renderAll(); });
+
+// ══ Add predictor slot ══
+document.getElementById("addSlotBtn").addEventListener("click", () => {
+  slots.push({ stationName:"", hi:"" }); saveSlots(); renderSlots();
+});
+
+// ══ CSV import (merge) ══
+document.getElementById("csvBtn").addEventListener("click", () => document.getElementById("csvFile").click());
+document.getElementById("csvFile").addEventListener("change", e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const rows = parseCSV(ev.target.result);
+      if (!rows.length) throw new Error("No valid rows found");
+      rows.forEach(r => {
+        const idx = db.findIndex(s => s.name === r.name);
+        if (idx >= 0) db[idx] = { ...db[idx], ...r }; else db.push(r);
+      });
+      saveDB();
+      $csvMsg.className = "csv-msg ok";
+      $csvMsg.textContent = `${rows.length} rows from ${file.name} · ${db.length} total`;
+      document.getElementById("stationsPanel").open = true;
+      refreshDatalist(); renderStationList(); renderAll();
+    } catch (err) {
+      $csvMsg.className = "csv-msg err";
+      $csvMsg.textContent = "Error: " + err.message;
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let start = 0;
+  if (lines.length && isNaN(+(lines[0].split(",")[1]?.trim()))) start = 1;
+  const out = [];
+  for (let i = start; i < lines.length; i++) {
+    const c = lines[i].split(",").map(v => v.trim());
+    if (c.length < 4) continue;
+    const [name, X, Y, elev, hi] = c;
+    if (!name || isNaN(+X) || isNaN(+Y) || isNaN(+elev)) continue;
+    out.push({ name, X:+X, Y:+Y, elev:+elev, hi: (hi && !isNaN(+hi)) ? +hi : 1.5 });
+  }
+  return out;
+}
+
+// ══ Clear DB ══
+document.getElementById("clearBtn").addEventListener("click", () => {
+  if (!confirm(`Remove all ${db.length} stations?`)) return;
+  db = []; saveDB();
+  $csvMsg.className = "csv-msg"; $csvMsg.textContent = "Database cleared";
+  refreshDatalist(); renderStationList(); renderAll();
+});
+
+// ══ Add manually ══
+const $addForm = document.getElementById("addForm");
+document.getElementById("addBtn").addEventListener("click", () => { $addForm.style.display = "block"; document.getElementById("af-name").focus(); });
+document.getElementById("af-cancel").addEventListener("click", () => { $addForm.style.display = "none"; });
+document.getElementById("af-save").addEventListener("click", () => {
+  const name = document.getElementById("af-name").value.trim();
+  if (!name) { alert("Name is required"); return; }
+  const row = {
+    name,
+    X:    +document.getElementById("af-x").value    || 0,
+    Y:    +document.getElementById("af-y").value    || 0,
+    elev: +document.getElementById("af-elev").value || 0,
+    hi:   +document.getElementById("af-hi").value   || 1.5,
+  };
+  const idx = db.findIndex(s => s.name === name);
+  if (idx >= 0) db[idx] = row; else db.push(row);
+  saveDB(); $addForm.style.display = "none";
+  ["af-name","af-x","af-y","af-elev","af-hi"].forEach(id => document.getElementById(id).value = "");
+  refreshDatalist(); renderStationList(); renderAll();
+});
+
+// ══ Init ══
+$picker.value = ref.stationName ?? "";
+$hi.value = ref.hi ?? "";
+$d.value = ref.d ?? ""; $m.value = ref.m ?? ""; $s.value = ref.s ?? "";
+$tol.value = cfg.tol ?? 0.5;
+$useCR.checked = !!cfg.useCR;
+refreshDatalist(); renderStationList(); renderAll();
+
+// ══ Service worker ══
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
